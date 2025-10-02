@@ -1395,7 +1395,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rs-rest-mongo"
+name = "rs-rest-crud"
 version = "0.1.0"
 dependencies = [
  "axum",
