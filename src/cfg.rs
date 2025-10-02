@@ -1,10 +1,8 @@
-use std::borrow::Cow;
-
 #[derive(Clone)]
 pub struct Config {
     pub port: u16,
-    pub connection_string: Cow<'static, str>,
-    pub collection: Cow<'static, str>,
+    pub connection_string: String,
+    pub collection: String,
 }
 
 impl Config {
@@ -17,11 +15,10 @@ impl Config {
     }
 }
 
-fn connection_string() -> Cow<'static, str> {
-    let con_str = std::env::var("CONNECTION_STRING").unwrap_or_else(|_| {
+fn connection_string() -> String {
+    std::env::var("CONNECTION_STRING").unwrap_or_else(|_| {
         "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000".to_string()
-    });
-    con_str.into()
+    })
 }
 
 fn port() -> u16 {
@@ -29,7 +26,6 @@ fn port() -> u16 {
     port.parse::<u16>().unwrap_or(3000)
 }
 
-fn collection() -> Cow<'static, str> {
-    let collection = std::env::var("COLLECTION").unwrap_or_else(|_| "pac".to_string());
-    collection.into()
+fn collection() -> String {
+    std::env::var("COLLECTION").unwrap_or_else(|_| "participant".to_string())
 }

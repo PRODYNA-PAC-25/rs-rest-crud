@@ -1,26 +1,26 @@
-use mongodb::bson::to_bson;
+use mongodb::{bson::{self, to_bson, Bson, Document}, options::ClientOptions, Collection, Database};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{collections::HashMap, fmt::Debug};
 
 pub async fn connect(
     connection_str: &str,
     collection: &str,
-) -> Result<mongodb::Database, mongodb::error::Error> {
-    let client_options = mongodb::options::ClientOptions::parse(connection_str).await?;
+) -> Result<Database, mongodb::error::Error> {
+    let client_options = ClientOptions::parse(connection_str).await?;
     let client = mongodb::Client::with_options(client_options)?;
     let db = client.database(collection);
     Ok(db)
 }
 
 pub async fn insert<T>(
-    db: &mongodb::Database,
+    db: &Database,
     collection: &str,
     payload: T,
 ) -> Result<(), mongodb::error::Error>
 where
     T: DeserializeOwned + Serialize + Send + Debug + 'static,
 {
-    let collection: mongodb::Collection<_> = db.collection(collection);
+    let collection: Collection<_> = db.collection(collection);
 
     let doc = to_bson(&payload)?;
     collection.insert_one(doc).await?;
@@ -36,13 +36,13 @@ pub async fn get<T>(
 where
     T: DeserializeOwned + Serialize + Send + Debug + 'static,
 {
-    let collection = db.collection::<mongodb::bson::Document>(collection);
+    let collection = db.collection::<Document>(collection);
 
     let r: Option<_> = collection.find_one(convert_hashmap_to_bson(filter)).await?;
 
     match r {
         Some(doc) => {
-            let result: T = mongodb::bson::from_document(doc)?;
+            let result: T = bson::from_document(doc)?;
             Ok(result)
         }
         None => Err(mongodb::error::Error::from(std::io::Error::new(
@@ -52,6 +52,6 @@ where
     }
 }
 
-fn convert_hashmap_to_bson(filter: HashMap<String, String>) -> mongodb::bson::Document {
-    filter.into_iter().map(|(k, v)| (k, mongodb::bson::Bson::String(v))).collect()
+fn convert_hashmap_to_bson(filter: HashMap<String, String>) -> Document {
+    filter.into_iter().map(|(k, v)| (k, Bson::String(v))).collect()
 }

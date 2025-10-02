@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, fmt::Debug, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use crate::mongo;
 use axum::{
@@ -9,18 +9,17 @@ use axum::{
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::json;
+use tokio::net::TcpListener;
 
 #[derive(Clone)]
 pub struct RestServer {
-    port: u16,
-    con_str: Cow<'static, str>,
-    col: Cow<'static, str>,
+    cfg : crate::cfg::Config,
 }
 
 #[derive(Clone)]
 pub struct AppState {
     db: Arc<mongodb::Database>,
-    col: Cow<'static, str>,
+    col: String,
 }
 
 #[derive(Serialize)]
@@ -30,12 +29,8 @@ pub struct ErrMsg {
 
 impl RestServer {
     pub async fn new() -> Self {
-        let cfg = crate::cfg::Config::new();
-
         RestServer {
-            port: cfg.port,
-            con_str: cfg.connection_string,
-            col: cfg.collection,
+            cfg: crate::cfg::Config::new(),
         }
     }
 
@@ -43,7 +38,7 @@ impl RestServer {
     where
         T: DeserializeOwned + Serialize + Send + Debug + 'static,
     {
-        let db = crate::mongo::connect(self.con_str.as_ref(), self.col.as_ref())
+        let db = crate::mongo::connect(self.cfg.connection_string.as_ref(), self.cfg.collection.as_ref())
             .await
             .expect("Failed to connect to MongoDB");
 
@@ -52,10 +47,10 @@ impl RestServer {
         app = app.route("/", axum::routing::post(RestServer::post_function::<T>));
         let app: Router<_> = app.with_state(AppState {
             db: Arc::new(db),
-            col: self.col.clone(),
+            col: self.cfg.collection,
         });
 
-        let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", self.port)).await?;
+        let listener = TcpListener::bind(format!("127.0.0.1:{}", self.cfg.port)).await?;
 
         axum::serve(listener, app).await?;
 
